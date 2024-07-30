@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>物联网实验平台</title>
+    {#    <meta http-equiv="refresh" content="5">#}
+    <link href="../static/css/style.css" rel="stylesheet" type="text/css"/>
+</head>
+<body onload="onPageLoad()">
+<h1>物联网实验平台-by 第二组</h1>
+<button id="btn1" onclick="onclickBtn1()"><span class="button_content">获取传感器状态</span></button>
+<button id="btn2" onclick="onclickBtn2()"><span class="button_content">打开电机</span></button>
+<button id="btn3" onclick="onclickBtn3()"><span class="button_content">关闭电机</span></button>
+<button id="btn4" onclick="onclickBtn4()"><span class="button_content">清空数据</span></button>
+<button id="btn_lock" onclick="lock()"><span class="button_content">锁定</span></button>
+<button id="btn_pwd_edit" onclick="pwd_edit()"><span class="button_content">修改密码</span></button>
+<div class="input-container">
+    <input type="number" id="delay" placeholder="输入延迟时间(秒)">
+    <button id="submitButton" onclick="setDelay()"><span class="button_content">提交</span></button>
+</div>
+
+{#<label for="delay">选择延迟时间：</label>#}
+{#<select id="delay" name="delay">#}
+{#  <!-- 使用JavaScript生成1到60的选项 -->#}
+{#  <script>#}
+{#    for (var i = 1; i <= 60; i++) {#}
+{#      var option = document.createElement("option");#}
+{#      option.value = i;#}
+{#      option.text = i;#}
+{#      document.getElementById("delay").appendChild(option);#}
+{#    }#}
+{#  </script>#}
+{#</select>#}
+
+<div class="alert">
+    {#    <span>⚠入侵预警⚠</span>#}
+</div>
+
+<div class="delay">
+    <span>延时(秒)：</span>
+</div>
+
+<div class="sensor-status">
+    <span>红外传感器状态：</span>
+</div>
+
+<div class="temp">
+    <span>温度(°C)：</span>
+</div>
+
+<div class="humi">
+    <span>湿度(%)：</span>
+</div>
+
+<div class="message">
+    <span>消息：</span>
+</div>
+
+<a class="about" href="/about/"> 关于我们 </a>
+</body>
+
+
+<script>
+    var intervalId = -1;
+
+    function onclickBtn1() {
+        const btn2 = document.getElementById("btn2");
+        const btn3 = document.getElementById("btn3");
+        const btn4 = document.getElementById("btn4");
+        btn2.disabled = true;
+        btn3.disabled = true;
+        btn4.disabled = true;
+        sendRequest(1)
+    }
+
+    function onclickBtn2() {
+        const btn1 = document.getElementById("btn1");
+        const btn3 = document.getElementById("btn3");
+        const btn4 = document.getElementById("btn4");
+        btn1.disabled = true;
+        btn3.disabled = true;
+        btn4.disabled = true;
+        sendRequest(2)
+    }
+
+    function onclickBtn3() {
+        const btn1 = document.getElementById("btn1");
+        const btn2 = document.getElementById("btn2");
+        const btn4 = document.getElementById("btn4");
+        btn1.disabled = true;
+        btn2.disabled = true;
+        btn4.disabled = true;
+        sendRequest(3)
+    }
+
+    function onclickBtn4() {
+        const btn1 = document.getElementById("btn1");
+        const btn2 = document.getElementById("btn2");
+        const btn3 = document.getElementById("btn3");
+        btn1.disabled = true;
+        btn2.disabled = true;
+        btn3.disabled = true;
+        sendRequest(5)
+    }
+
+    function lock() {
+        const actionUrl = `/request/?request_type=7`;
+        fetch(actionUrl, {method: "GET"})
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Network response was not ok: ${response.statusText}`);
+                }
+                return response.json();
+            })
+            .then(() => {
+            })
+            .catch(error => {
+                console.error("Error during fetch operation:", error);
+            });
+        window.location.replace("/login/");
+    }
+
+    function pwd_edit() {
+        window.location.replace("/change/");
+    }
+
+    function sendRequest(requestType, value = 0) {
+        if (requestType === 1) {
+            console.log("in request 1 with intervalId " + intervalId);
+            if (intervalId !== -1) {
+                clearInterval(intervalId);
+                console.log("clearInterval: " + intervalId);
+            }
+            intervalId = setInterval(updateIrStatus, 60000);
+            console.log("setInterval: " + intervalId);
+        }
+        let actionUrl;
+        if (requestType !== 4) {
+            actionUrl = `/request/?request_type=${requestType}`;
+        } else {
+            actionUrl = `/request/?request_type=${requestType}&value=${value}`;
+        }
+        fetch(actionUrl, {method: "GET"})
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Network response was not ok: ${response.statusText}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                document.querySelector(".delay span").textContent = `延时(秒)：${data.delay}`;
+                document.querySelector(".sensor-status span").textContent = `红外传感器状态：${data.ir_status}`;
+                document.querySelector(".temp span").textContent = `温度(°C)：${data.temp}`;
+                document.querySelector(".humi span").textContent = `湿度(%)：${data.humidity}`;
+                document.querySelector(".message span").textContent = `消息：${data.msg}`;
+                console.log("Response:", data);
+                const intrusionAlertElement = document.querySelector(".alert");
+                if (data.intrusion_alert === '1') {
+                    intrusionAlertElement.innerHTML = '<div class="intrusion-alert"><span>⚠入侵预警⚠</span></div>';
+                } else {
+                    intrusionAlertElement.innerHTML = '';
+                }
+                const btn1 = document.getElementById("btn1");
+                const btn2 = document.getElementById("btn2");
+                const btn3 = document.getElementById("btn3");
+                const btn4 = document.getElementById("btn4");
+                btn1.disabled = false;
+                btn2.disabled = false;
+                btn3.disabled = false;
+                btn4.disabled = false;
+            })
+            .catch(error => {
+                console.error("Error during fetch operation:", error);
+            });
+    }
+
+    function onPageLoad() {
+        const btn1 = document.getElementById("btn1");
+        const btn2 = document.getElementById("btn2");
+        const btn3 = document.getElementById("btn3");
+        const btn4 = document.getElementById("btn4");
+        btn1.disabled = true;
+        btn2.disabled = true;
+        btn3.disabled = true;
+        btn4.disabled = true;
+        sendRequest(1);
+    }
+
+    function updateIrStatus() {
+        const btn1 = document.getElementById("btn1");
+        const btn2 = document.getElementById("btn2");
+        const btn3 = document.getElementById("btn3");
+        const btn4 = document.getElementById("btn4");
+        btn1.disabled = true;
+        btn2.disabled = true;
+        btn3.disabled = true;
+        btn4.disabled = true;
+        sendRequest(1);
+        console.log("This function is executed every minute.");
+    }
+
+    function setDelay() {
+        const delayValue = parseFloat(document.getElementById("delay").value);
+        const intValue = Math.floor(delayValue);
+        console.log("delayValue: " + delayValue);
+
+        if (!isNaN(intValue) && intValue >= 0 && intValue <= 100 && intValue === delayValue) {
+            sendRequest(4, intValue);
+            console.log("延迟设定为：" + intValue);
+        } else {
+            document.getElementById("delay").value = '';
+            alert("请输入0-100之间的整数。");
+        }
+    }
+</script>
+</html>
